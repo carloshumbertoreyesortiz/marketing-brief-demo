@@ -553,7 +553,7 @@ function advanceConversationStateMachine(text) {
         const sizeMatch = lower.match(/(\d+\s*[-–til]{1,3}\s*\d+|\d+\+?)\s*(ansatte|abonnement)/);
         if (sizeMatch) briefState.targetSize = sizeMatch[0].trim();
 
-        if (lower.includes('bedriftsnett') || lower.includes('TC')) briefState.existingProducts = 'Team Connect';
+        if (lower.includes('Team Connect') || lower.includes('TC')) briefState.existingProducts = 'Team Connect';
         else if (lower.includes('mobile voice')) briefState.existingProducts = 'Mobile Voice';
 
         if (/lanser/.test(lower)) briefState.category = 'Lansering';
