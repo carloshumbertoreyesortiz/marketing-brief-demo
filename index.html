@@ -46,7 +46,7 @@
 .fa-wand-magic-sparkles::before{content:"✨"}
 .fa-wifi::before{content:"📶"}</style>
 </head>
-<body data-build="smoke-test" class="bg-slate-100 text-slate-800 font-sans h-full flex flex-col overflow-hidden"><div style="background:#1e293b;color:#e2e8f0;font:600 12px/1.5 system-ui,sans-serif;padding:10px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="background:#f59e0b;color:#1e293b;padding:2px 8px;border-radius:4px;font-weight:800">PUBLIC DEMO</span><span style="background:#334155;padding:2px 8px;border-radius:4px;font-family:ui-monospace,monospace;font-size:11px">build 24.08.2026</span><span>Interface prototype. Fictional company, simulated AI &mdash; no real data. Norwegian UI, EN toggle available.</span></div>
+<body data-build="smoke-test" class="bg-slate-100 text-slate-800 font-sans h-full flex flex-col overflow-hidden"><div style="background:#1e293b;color:#e2e8f0;font:600 12px/1.5 system-ui,sans-serif;padding:10px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="background:#f59e0b;color:#1e293b;padding:2px 8px;border-radius:4px;font-weight:800">PUBLIC DEMO</span><span style="background:#334155;padding:2px 8px;border-radius:4px;font-family:ui-monospace,monospace;font-size:11px">build 24.08.2026</span><span>Interface prototype. Fictional company, simulated AI &mdash; no real data.</span></div>
 
     <header class="bg-white border-b border-slate-200 h-16 flex-none z-30 shadow-sm">
         <div class="max-w-[1700px] mx-auto px-4 sm:px-6 h-full flex items-center justify-between">
@@ -784,13 +784,14 @@ function updateLivePreview() {
     if (briefState.channels.sms)   chans += pill('SMS');
     document.getElementById('briefChannelContainer').innerHTML = chans || ph('w-1/3');
 
+    // MÅLGRUPPE describes the audience only. Segment and Frist have their own
+    // fields above, so repeating them here made the line read as a catch-all
+    // summary rather than a description of who is being targeted. (Feedback 24.08)
     const parts = [];
-    if (briefState.segment)            parts.push(briefState.segment);
     if (briefState.targetSize)         parts.push(`Størrelse: ${briefState.targetSize}`);
     if (briefState.resellersIncluded)  parts.push(`Forhandlere: ${briefState.resellersIncluded}`);
     if (briefState.existingProducts)   parts.push(`Produkter: ${briefState.existingProducts}`);
     if (briefState.otherAudienceProps) parts.push(`Egenskaper: ${briefState.otherAudienceProps}`);
-    if (briefState.deadline)           parts.push(`Frist: ${briefState.deadline}`);
     document.getElementById('briefAudienceText').innerHTML =
         parts.length ? escapeHtml(parts.join(' • '))
         : `<div class="space-y-1.5 opacity-60">${ph('w-full')}${ph('w-1/2')}</div>`;
