@@ -553,7 +553,7 @@ const CHANNEL_PATTERNS = [
   { key:'ads',      label:'Annonsering',      re:/\bannonser\w*|some|sosiale medier|display|kampanjeannonse/i },
   { key:'letter',   label:'Brev',             re:/\bbrev|dm\b|direktereklame/i },
   { key:'webinar',  label:'Webinar',          re:/\bwebinar|arrangement|event/i },
-  { key:'web',      label:'Nettside',         re:/\bnettside|telenor\.no|landingsside/i }
+  { key:'web',      label:'Nettside',         re:/\bnettside|northwind\.example|landingsside/i }
 ];
 function matchChannels(text) {
   const hits = CHANNEL_PATTERNS.filter(c => c.re.test(text || ''));
