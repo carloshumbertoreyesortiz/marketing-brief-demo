@@ -553,11 +553,20 @@ const CHANNEL_PATTERNS = [
   { key:'ads',      label:'Annonsering',      re:/\bannonser\w*|some|sosiale medier|display|kampanjeannonse/i },
   { key:'letter',   label:'Brev',             re:/\bbrev|dm\b|direktereklame/i },
   { key:'webinar',  label:'Webinar',          re:/\bwebinar|arrangement|event/i },
-  { key:'web',      label:'Nettside',         re:/\bnettside|northwind\.example|landingsside/i }
+  { key:'web',      label:'Nettside',         re:/\bnettside|telenor\.no|landingsside/i }
 ];
 function matchChannels(text) {
   const hits = CHANNEL_PATTERNS.filter(c => c.re.test(text || ''));
   return hits.map(c => ({ key: c.key, label: c.label }));
+}
+
+function matchCategory(t) {
+  const l = (t||'').toLowerCase();
+  if (/varsl|prisend|endring/.test(l)) return 'Varsling';
+  if (/lanser/.test(l))                return 'Lansering';
+  if (/delight|takk/.test(l))          return 'Delight';
+  if (/salg|tilbud|kampanje/.test(l))  return 'Salgsaktivitet';
+  return null;
 }
 
 function matchSegments(t) {
@@ -624,7 +633,7 @@ function advanceConversationStateMachine(text) {
         case 'q_products':        briefState.existingProducts = text; break;
         case 'q_other_audience':  briefState.otherAudienceProps = text; break;
         case 'q_goal':            briefState.goalKpi = text; break;
-        case 'q_category':        briefState.category = text; break;
+        case 'q_category':        briefState.category = matchCategory(text) || text; break;
         case 'q_channels': {
             const hits = matchChannels(text);
             briefState.channels.email = hits.some(h => h.key === 'email');
@@ -769,10 +778,10 @@ function syncDeadlineControls() {
 function askNextQuestion() {
     const Q = [
         ['segment',            () => !briefState.segment,            "Hvilke kunder ønsker du å nå? (segment)"],
-        ['size',               () => !briefState.targetSize,         "Er det kunder av en viss størrelse du skal nå? (f.eks. antall ansatte/abonnement)"],
+        ['size',               () => !briefState.targetSize,         "Hvilken størrelse skal bedriftene ha? Oppgi for eksempel antall ansatte eller mobilabonnement."],
         ['resellers',          () => !briefState.resellersIncluded,  "Skal forhandlerkunder være med i aktiviteten?"],
         ['products',           () => !briefState.existingProducts,   "Hvilke produkter/tjenester skal kundene ha fra før?"],
-        ['other_audience',     () => !briefState.otherAudienceProps, "Er det andre egenskaper ved målgruppa som er viktig?"],
+        ['other_audience',     () => !briefState.otherAudienceProps, "Er det andre kriterier som avgjør hvem aktiviteten skal rettes mot? Oppgi for eksempel bransje, produkter de har, kundeforhold, geografi eller tidligere aktivitet."],
         ['goal',               () => !briefState.goalKpi,            "Hva ønsker du å oppnå med denne aktiviteten?"],
         ['category',           () => !briefState.category,           "Hvilken kategori passer best? (varsling, salgsaktivitet, lansering eller delight)"],
         ['channels',           () => !briefState.channels.email && !briefState.channels.sms && !briefState.otherChannels.length,
@@ -797,30 +806,46 @@ function askNextQuestion() {
    frequently contains exactly that ("SMB-kunder med 5-50 ansatte"), so the
    draft is composed from the product and the goal, never from the raw
    background. ------------------------------------------------------- */
+// The activity is not always an offer. A price notice, a service change or a
+// launch each need a different opening - "Vi har et tilbud på ..." on a price
+// increase reads as tone-deaf. (Feedback 25.08)
+const OPENINGS = {
+    'Varsling':       { lead: (x) => x ? `Vi vil informere deg om en endring som gjelder ${x}.`
+                                       : `Vi vil informere deg om en endring som gjelder tjenesten din.`,
+                        close: `Du trenger ikke gjøre noe nå. Ta kontakt hvis du lurer på noe.`,
+                        sms:   (x) => `Hei! Vi har sendt deg en e-post om ${x || 'en endring i tjenesten din'}. Mvh Northwind Business` },
+    'Lansering':      { lead: (x) => x ? `Vi har lansert ${x}, og vil gjerne fortelle deg om det.`
+                                       : `Vi har lansert noe nytt, og vil gjerne fortelle deg om det.`,
+                        close: `Ta gjerne kontakt hvis du vil vite mer.`,
+                        sms:   (x) => `Hei! Vi har sendt deg en e-post om ${x || 'noe nytt fra oss'}. Mvh Northwind Business` },
+    'Salgsaktivitet': { lead: (x) => x ? `Vi har et tilbud på ${x} som kan være aktuelt for din bedrift.`
+                                       : `Vi har et tilbud som kan være aktuelt for din bedrift.`,
+                        close: `Ta gjerne kontakt med oss, eller svar på denne e-posten, for mer informasjon.`,
+                        sms:   (x) => `Hei! Vi har sendt deg en e-post om ${x || 'et tilbud til bedriften din'}. Mvh Northwind Business` },
+    'Delight':        { lead: (x) => x ? `Vi vil bare si takk – og fortelle deg om ${x}.`
+                                       : `Vi vil bare si takk for at du er kunde hos oss.`,
+                        close: `Ta gjerne kontakt hvis du lurer på noe.`,
+                        sms:   (x) => `Hei! Vi har sendt deg en e-post${x ? ' om ' + x : ''}. Mvh Northwind Business` }
+};
 function generateDrafts() {
     if (!briefState.hasStarted) return;
     const subject = offerSubject(briefState.background);
-    const line = subject
-        ? `Vi har et tilbud på ${asPhrase(subject)} som kan være aktuelt for din bedrift.`
-        : `Vi har et tilbud som kan være aktuelt for din bedrift.`;
+    const x = subject ? asPhrase(subject) : "";
+    const tone = OPENINGS[briefState.category] || OPENINGS['Salgsaktivitet'];
 
     // No e-post chosen, no e-post draft. Writing copy for a channel nobody asked
-    // for is noise, and it implies the activity is something it is not. (Feedback 25.08)
+    // for is noise, and it implies the activity is something it is not.
     briefState.emailDraft = briefState.channels.email
         ? `Hei!
 
-${line}
+${tone.lead(x)}
 
-Ta gjerne kontakt med oss, eller svar på denne e-posten, for mer informasjon.
+${tone.close}
 
 Med vennlig hilsen
 Northwind Business`
         : "";
-    briefState.smsDraft = briefState.channels.sms
-        ? (subject
-            ? `Hei! Vi har sendt deg en e-post om ${asPhrase(subject)}. Mvh Northwind Business`
-            : `Hei! Vi har sendt deg en e-post med et tilbud til bedriften din. Mvh Northwind Business`)
-        : "";
+    briefState.smsDraft = briefState.channels.sms ? tone.sms(x) : "";
 }
 
 /* ---------- right panel ------------------------------------------------ */
